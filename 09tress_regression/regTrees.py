@@ -118,16 +118,86 @@ def prune(tree, testData):
         return tree
 
 
+def linearSolve(dataSet):
+    m,n = shape(dataSet)
+    X = mat(ones((m,n)))
+    Y = mat(ones((m,1)))
+    X[:,1:n] = dataSet[:, 0:n-1]
+    Y = dataSet[:, -1]
+    xTx = X.T*X
+    if linalg.det(xTx) == 0.0:
+        raise NameError('The matrix is singular')
+    ws = xTx.I*(X.T*Y)
+    return ws,X,Y
 
-myData = loadDataSet('ex2.txt')
-myMat = mat(myData)
-myTree = createTree(myMat, regLeaf, regErr, (0,1))
-myTestData = loadDataSet('ex2test.txt')
-myTestMat = mat(myTestData)
-pruneTree = prune(myTree, myTestMat)
+
+def modelLeaf(dataSet):
+    ws, X, Y =linearSolve(dataSet)
+    return ws
+
+
+def modelErr(dataSet):
+    ws,X,Y = linearSolve(dataSet)
+    yHat = X*ws
+    return sum(power(Y - yHat, 2))
+
+
+def regTreeEval(model, inDat):
+    return float(model)
+
+
+def modelTreeEval(model, inDat):
+    n = shape(inDat)[1]
+    X = mat(ones((1,n+1)))
+    X[:,1:n+1] = inDat
+    return float(X*model)
+
+
+def treeForceCast(tree, inData,modelEval = regTreeEval):
+    if not isTree(tree):
+        return modelEval(tree, inData)
+    if inData[tree['spInd']] > tree['spVal']:
+        if isTree(tree['left']):
+            return treeForceCast(tree['left'], inData, modelEval)
+        else:
+            return modelEval(tree['left'], inData)
+    else:
+        if isTree(tree['right']):
+            return treeForceCast(tree['right'], inData, modelEval)
+        else:
+            return modelEval(tree['right'], inData)
+
+
+def createForceCast(tree, testData, modelEval = regTreeEval):
+    m = len(testData)
+    yHat = mat(zeros((m,1)))
+    for i in range(m):
+        yHat[i,0] = treeForceCast(tree, mat(testData[i]), modelEval)
+    return yHat
+
+
+
+# myData = loadDataSet('ex2.txt')
+# myMat = mat(myData)
+# myTree = createTree(myMat, regLeaf, regErr, (0,1))
+# myTestData = loadDataSet('ex2test.txt')
+# myTestMat = mat(myTestData)
+# pruneTree = prune(myTree, myTestMat)
+#
+#
+# myMat2 = mat(loadDataSet('exp2.txt'))
+# myTree2 = createTree(myMat2,modelLeaf, modelErr, (1,10))
+# print(myTree2)
+
+
+trainMat = mat(loadDataSet('bikeSpeedVsIq_train.txt'))
+testMat = mat(loadDataSet('bikeSpeedVsIq_test.txt'))
+bikeTree = createTree(trainMat, modelLeaf, modelErr,(1,20))
+yHat = createForceCast(bikeTree, testMat[:,0],modelTreeEval)
+print(corrcoef(yHat, testMat[:,1], rowvar=0)[0,1])
+
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
-ax.scatter(myMat[:,0],myMat[:,1])
+# ax.scatter(myMat2[:,0],myMat2[:,1])
 plt.show()
-
