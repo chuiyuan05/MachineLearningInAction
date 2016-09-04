@@ -18,11 +18,12 @@ def scanD(D, Ck, minSupport):
     for tid in D:
         for can in Ck:
             if can.issubset(tid):
-                if not ssCnt.has_key(can):
+                if not can in ssCnt:
                     ssCnt[can] =1
                 else:
                     ssCnt[can] += 1
     numItems = float(len(D))
+    print(numItems)
     retList = []
     supportData = {}
     for key in ssCnt:
@@ -62,11 +63,45 @@ def apriori(dataSet, minSupport = 0.5):
     return L , supportData
 
 
+def generateRules(L, supportData, minConf = 0.7):
+    bigRuleList = []
+    for i in range(1, len(L)):
+        for freqSet in L[i]:
+            print(freqSet)
+            H1 = [frozenset([item]) for item in freqSet]
+            if i >1:
+                rulesFromConseq(freqSet, H1, supportData, bigRuleList, minConf)
+            else:
+                calcConf(freqSet, H1, supportData, bigRuleList, minConf)
+    return bigRuleList
+
+
+def calcConf(freqSet, H, supportData, br1, minConf = 0.7):
+    prunedH = []
+    for conseq in H:
+        conf = supportData[freqSet]/supportData[freqSet - conseq]
+    if conf >= minConf:
+        print(freqSet-conseq, '-->',conseq,'conf:',conf)
+        br1.append((freqSet-conseq, conseq, conf))
+        prunedH.append(conseq)
+    return prunedH
+
+
+def rulesFromConseq(freqSet, H, supportData, br1, minConf = 0.7):
+    m = len(H[0])
+    if len(freqSet) > (m+1) :
+        Hmp1 = aprioriGen(H, m+1)
+        Hmp1 = calcConf(freqSet, Hmp1, supportData, br1, minConf)
+        if len(Hmp1) >1:
+            rulesFromConseq(freqSet, Hmp1, supportData, br1, minConf)
+
 
 dataSet = loadDataSet()
 L, supData = apriori(dataSet, 0.7)
 print(L)
 print(supData)
+rules = generateRules(L, supData, minConf=0.5)
+# print(rules)
 # C1 = createC1(dataSet)
 # print(C1)
 # D = map(set, dataSet)
